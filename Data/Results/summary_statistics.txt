@@ -1,0 +1,11 @@
+Table: Summary Statistics of Key Indicators
+
+|Variable                                           |    Mean|      SD|   Min|       Max|  Obs|
+|:--------------------------------------------------|-------:|-------:|-----:|---------:|----:|
+|Crime Rate (per 100k)                              | 6073.76| 3267.41|  1.52| 103983.37| 8000|
+|Unemployment Rate (%)                              |    7.06|    3.90|  1.25|     25.43| 8000|
+|GDP per Capita (€)                                 |   32.61|   15.24| 11.08|    195.84| 8000|
+|Share of youth (18–29, %)                          |   13.60|    2.49|  6.35|     25.74| 8000|
+|Share of males (%)                                 |   49.17|    0.69| 45.99|     51.65| 8000|
+|Male share among youth (%)                         |   52.07|    1.99| 43.43|     61.97| 8000|
+|Share of school leavers without qualifications (%) |    6.78|    2.50|  1.08|     17.78| 8000|

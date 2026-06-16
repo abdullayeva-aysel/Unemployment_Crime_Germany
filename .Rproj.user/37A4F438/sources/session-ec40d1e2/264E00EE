@@ -1,0 +1,26 @@
+{
+    "id": "264E00EE",
+    "path": "~/Applied_Economics/Code/Analysis/Models_Per_Crime/run_total_recorded_crime.R",
+    "project_path": "Code/Analysis/Models_Per_Crime/run_total_recorded_crime.R",
+    "type": "r_source",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1776096131411.0,
+    "source_on_save": false,
+    "relative_order": 17,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "1,14",
+        "scrollLine": "0"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1776096137,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1776096137383,
+    "read_only": false,
+    "read_only_alternatives": []
+}

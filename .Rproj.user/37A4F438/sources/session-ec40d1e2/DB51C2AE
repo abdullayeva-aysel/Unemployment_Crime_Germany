@@ -1,0 +1,26 @@
+{
+    "id": "DB51C2AE",
+    "path": "~/Applied_Economics/Code/Analysis/Models_Per_Crime/run_theft_from_out_of_motor_vehicles.R",
+    "project_path": "Code/Analysis/Models_Per_Crime/run_theft_from_out_of_motor_vehicles.R",
+    "type": "r_source",
+    "hash": "4185556482",
+    "contents": "",
+    "dirty": false,
+    "created": 1776096123180.0,
+    "source_on_save": false,
+    "relative_order": 16,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "4,35",
+        "scrollLine": "0"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1776096129,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1776096129780,
+    "read_only": false,
+    "read_only_alternatives": []
+}

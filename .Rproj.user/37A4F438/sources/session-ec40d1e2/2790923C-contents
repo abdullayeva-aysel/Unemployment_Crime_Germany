@@ -1,0 +1,462 @@
+library(tidyverse)
+library(stringr)
+library(readxl)
+
+
+
+cat("Current working directory:\n  ", getwd(), "\n\n")
+
+# A few reasonable locations for the PKS raw data
+candidate_input_dirs <- c(
+  file.path("Data", "Raw", "PKS"),
+  file.path("..", "Data", "Raw", "PKS"),
+  file.path("..", "..", "Data", "Raw", "PKS")
+)
+
+input_dir <- NULL
+for (p in candidate_input_dirs) {
+  if (dir.exists(p)) {
+    input_dir <- p
+    break
+  }
+}
+
+if (is.null(input_dir)) {
+  stop(paste(
+    "Could not find PKS input directory.\nTried:",
+    paste(candidate_input_dirs, collapse = " | ")
+  ))
+}
+
+
+data_root <- normalizePath(file.path(input_dir, "..", ".."), winslash = "/")
+output_dir <- file.path(data_root, "Processed", "PKS_Processed", "01-converted")
+dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
+
+cat("Using input_dir : ", normalizePath(input_dir, winslash = "/"), "\n")
+cat("Using output_dir: ", normalizePath(output_dir, winslash = "/"), "\n\n")
+
+
+# -------------------------------------------------
+# HELPER FUNCTIONS
+# -------------------------------------------------
+
+clean_numeric <- function(x) {
+  x <- as.character(x)
+  x <- str_trim(x)
+  if (is.na(x) || x == "" || x == "-") {
+    return(NA_real_)
+  }
+  x <- str_remove_all(x, "[\\s\\.]")
+  x <- str_replace_all(x, ",", ".")
+  suppressWarnings(as.numeric(x))
+}
+
+parse_excel_num <- function(x) {
+  if (is.na(x)) {
+    return(NA_real_)
+  }
+  x <- as.character(x)
+  x <- str_trim(x)
+  if (x == "") {
+    return(NA_real_)
+  }
+  if (str_detect(x, "^-?\\d+(\\.\\d+)?$")) {
+    return(as.numeric(x))
+  }
+  clean_numeric(x)
+}
+
+normalize_pdf_crime_code <- function(x) {
+  x <- as.character(x)
+  x <- str_trim(x)
+  case_when(
+    x %in%
+      c(
+        "----",
+        "------",
+        "-- -- - -",
+        "- -- - - -",
+        "- - - - - -",
+        "- - - - - - - - - - - -"
+      ) ~ "------",
+    x == "2200" ~ "220000",
+    x == "2220" ~ "222000",
+    x == "435*" ~ "435*00",
+    x == "*50*" ~ "*50*00",
+    x == "6740" ~ "674000",
+    x == "7300" ~ "730000",
+    x == "8990" ~ "899000",
+    TRUE ~ x
+  )
+}
+
+standardize_crime_type <- function(crime_code, crime_type) {
+  code <- as.character(crime_code)
+  lbl <- as.character(crime_type)
+
+  std <- case_when(
+    code == "------" ~ "Straftaten insgesamt",
+    str_detect(lbl, "Raub.*Erpressung") ~ "Raub, räuberische Erpressung",
+    code == "220000" ~ "Körperverletzung insgesamt",
+    code == "222000" ~ "Gefährliche und schwere Körperverletzung insgesamt",
+    code == "435*00" ~ "Wohnungseinbruchdiebstahl",
+    code == "674000" ~ "Sachbeschädigung",
+    code == "730000" ~ "Rauschgiftdelikte",
+    code == "899000" ~ "Straßenkriminalität",
+    code == "*50*00" ~ "Diebstahl insgesamt an/aus Kraftfahrzeugen",
+    TRUE ~ lbl
+  )
+
+  ifelse(is.na(std) | std == "", lbl, std)
+}
+
+safe_excel_sheets <- function(file_path) {
+  tryCatch(
+    readxl::excel_sheets(file_path),
+    error = function(e) {
+      tmp_copy <- tempfile(pattern = "pks_copy_", fileext = ".xlsx")
+      ok <- tryCatch(
+        {
+          file.copy(file_path, tmp_copy, overwrite = TRUE)
+        },
+        error = function(copy_err) {
+          warning(paste0(
+            "  ! Could not copy locked workbook ",
+            basename(file_path),
+            ": ",
+            copy_err$message
+          ))
+          return(FALSE)
+        }
+      )
+
+      if (!isTRUE(ok) || !file.exists(tmp_copy)) {
+        warning(paste0(
+          "  ! Could not read sheets in ",
+          basename(file_path),
+          ": ",
+          e$message
+        ))
+        return(character())
+      }
+
+      sheets <- tryCatch(
+        readxl::excel_sheets(tmp_copy),
+        error = function(e2) {
+          warning(paste0(
+            "  ! Could not read sheets in ",
+            basename(file_path),
+            " after copy fallback: ",
+            e2$message
+          ))
+          return(character())
+        }
+      )
+
+      attr(sheets, "copied_workbook_path") <- tmp_copy
+      return(sheets)
+    }
+  )
+}
+
+safe_read_excel <- function(file_path, sheet, copied_workbook_path = NULL) {
+  read_from <- if (
+    !is.null(copied_workbook_path) && file.exists(copied_workbook_path)
+  ) {
+    copied_workbook_path
+  } else {
+    file_path
+  }
+
+  tryCatch(
+    suppressMessages(
+      readxl::read_excel(
+        read_from,
+        sheet = sheet,
+        col_names = FALSE,
+        .name_repair = "minimal"
+      )
+    ),
+    error = function(e) {
+      warning(paste0(
+        "  ! Could not read ",
+        basename(file_path),
+        " / ",
+        sheet,
+        ": ",
+        e$message
+      ))
+      return(NULL)
+    }
+  )
+}
+
+# -------------------------------------------------
+# EXCEL PROCESSING
+# -------------------------------------------------
+
+process_excel <- function(file_path) {
+  filename <- basename(file_path)
+  year <- as.integer(stringr::str_extract(filename, "\\d{4}"))
+  message(paste0("Processing Excel: ", filename, " (Year: ", year, ")"))
+
+  sheet_names <- safe_excel_sheets(file_path)
+  if (length(sheet_names) == 0) {
+    return(NULL)
+  }
+  copied_workbook_path <- attr(
+    sheet_names,
+    "copied_workbook_path",
+    exact = TRUE
+  )
+
+  target_sheet <- sheet_names[stringr::str_detect(sheet_names, "Kreis")]
+  if (length(target_sheet) == 0) {
+    target_sheet <- sheet_names[1]
+  }
+  target_sheet <- target_sheet[1]
+
+  raw_data <- safe_read_excel(file_path, target_sheet, copied_workbook_path)
+  if (is.null(raw_data)) {
+    return(NULL)
+  }
+
+  data_mat <- as.matrix(raw_data)
+
+  # --- 1. Identify Columns by Header ---
+  header_rows <- data_mat[1:min(20, nrow(data_mat)), ]
+
+  find_col <- function(rows, patterns, name) {
+    for (r in 1:nrow(rows)) {
+      row_txt <- as.character(rows[r, ])
+      row_txt[is.na(row_txt)] <- ""
+      matches <- which(stringr::str_detect(
+        stringr::str_to_lower(row_txt),
+        patterns
+      ))
+      if (length(matches) > 0) {
+        return(matches[1])
+      }
+    }
+    return(NA)
+  }
+
+  idx_key <- find_col(
+    header_rows,
+    "kreisschlüssel|kreis-?schlüssel|kreis-?nr|kreis_nr",
+    "Key"
+  )
+  idx_cases <- find_col(
+    header_rows[, -c(1:3), drop = FALSE],
+    "erfasste fälle|anzahl fälle|^fälle$|fallzahl",
+    "Cases"
+  )
+  if (!is.na(idx_cases)) {
+    idx_cases <- idx_cases + 3
+  }
+
+  idx_hz <- find_col(
+    header_rows[, -c(1:3), drop = FALSE],
+    "häufigkeitszahl|hz|belastung|kriminalitätsbelastung",
+    "HZ"
+  )
+  if (!is.na(idx_hz)) {
+    idx_hz <- idx_hz + 3
+  }
+
+  # Fallbacks
+  if (is.na(idx_key)) {
+    idx_key <- 3
+  }
+  if (!is.na(idx_cases) && !is.na(idx_hz) && idx_cases == idx_hz) {
+    idx_hz <- NA
+  }
+  message(paste0(
+    "  - Found columns: Key=",
+    idx_key,
+    ", Cases=",
+    idx_cases,
+    ", HZ=",
+    idx_hz
+  ))
+
+  extracted_rows <- list()
+  current_crime_code <- NA_character_
+  current_crime_type <- NA_character_
+
+  for (r in seq_len(nrow(data_mat))) {
+    row_vals <- data_mat[r, ]
+    row_chr <- as.character(row_vals)
+    row_chr[is.na(row_chr)] <- ""
+    row_chr_sq <- stringr::str_squish(row_chr)
+
+    # Ident Crime Code
+    look_range <- 1:min(3, length(row_chr_sq))
+    code_match <- which(stringr::str_detect(
+      row_chr_sq[look_range],
+      "^[-*0-9]{4,7}$"
+    ))
+
+    if (length(code_match) > 0) {
+      cp <- code_match[1]
+      new_code <- normalize_pdf_crime_code(row_chr_sq[cp])
+
+      if (is.na(current_crime_code) || new_code != current_crime_code) {
+        current_crime_code <- new_code
+        crime_name_parts <- row_chr_sq[(cp + 1):min(cp + 5, length(row_chr_sq))]
+        crime_name_parts <- crime_name_parts[
+          crime_name_parts != "" &
+            !stringr::str_detect(crime_name_parts, "^\\d+$")
+        ]
+        if (length(crime_name_parts) > 0) {
+          current_crime_type <- standardize_crime_type(
+            current_crime_code,
+            paste(crime_name_parts, collapse = " ")
+          )
+        }
+      }
+      if (!stringr::str_detect(row_chr_sq[idx_key], "^\\d{5}$")) next
+    }
+
+    if (!stringr::str_detect(row_chr_sq[idx_key], "^\\d{5}$")) {
+      next
+    }
+    key <- row_chr_sq[idx_key]
+    if (
+      is.na(current_crime_code) ||
+        is.na(current_crime_type) ||
+        current_crime_type == ""
+    ) {
+      next
+    }
+
+    name_cand <- ""
+    for (offset in c(1, 2, -1, -2)) {
+      if ((idx_key + offset) >= 1 && (idx_key + offset) <= length(row_chr_sq)) {
+        cand <- row_chr_sq[idx_key + offset]
+        if (nchar(cand) > 3 && !stringr::str_detect(cand, "^\\d+$")) {
+          name_cand <- cand
+          break
+        }
+      }
+    }
+
+    if (!is.na(idx_cases) && !is.na(idx_hz)) {
+      cases_val <- parse_excel_num(row_chr_sq[idx_cases])
+      hz_val <- parse_excel_num(row_chr_sq[idx_hz])
+    } else {
+      num_vals <- purrr::map_dbl(row_chr_sq, parse_excel_num)
+      valid_num <- which(!is.na(num_vals) & num_vals > 0)
+      valid_num <- valid_num[valid_num > idx_key]
+      if (length(valid_num) < 2) {
+        next
+      }
+      cases_val <- num_vals[valid_num[1]]
+      hz_val <- num_vals[valid_num[2]]
+    }
+
+    if (is.na(cases_val)) {
+      next
+    }
+
+    einwohner <- NA_real_
+    if (!is.na(hz_val) && hz_val > 0) {
+      einwohner <- round(cases_val / hz_val * 100000)
+    }
+
+    extracted_rows[[length(extracted_rows) + 1]] <- dplyr::tibble(
+      Jahr = as.integer(year),
+      Schluesselzahl = as.character(current_crime_code),
+      Straftat = as.character(current_crime_type),
+      Kreisschluessel = as.character(key),
+      Kreis = name_cand,
+      Kreisart = NA_character_,
+      Einwohner = einwohner,
+      Erfasste_Faelle = cases_val,
+      Straftaten_HZ = hz_val
+    )
+  }
+
+  if (length(extracted_rows) > 0) {
+    df <- dplyr::bind_rows(extracted_rows) |>
+      dplyr::distinct() |>
+      # Fill missing schema columns to match 02_PKS_Old_Datasets_PDF2CSV.R
+      dplyr::mutate(
+        Versuche_Anzahl = NA_real_,
+        Versuche_Anteil_Prozent = NA_real_,
+        Mit_Schusswaffe_gedroht = NA_real_,
+        Mit_Schusswaffe_geschossen = NA_real_,
+        Aufklaerung_Faelle = NA_real_,
+        Aufklaerungsquote = NA_real_,
+        Tatverdaechtige_Insgesamt = NA_real_,
+        Tatverdaechtige_Maennlich = NA_real_,
+        Tatverdaechtige_Weiblich = NA_real_,
+        Nichtdeutsche_Tatverdaechtige_Anzahl = NA_real_,
+        Nichtdeutsche_Tatverdaechtige_Prozent = NA_real_
+      )
+
+    # Select columns to match long format
+    df <- df |>
+      dplyr::select(
+        Schluesselzahl,
+        Straftat,
+        Kreisschluessel,
+        Kreisart,
+        Kreis,
+        Einwohner,
+        Erfasste_Faelle,
+        Straftaten_HZ,
+        Versuche_Anzahl,
+        Versuche_Anteil_Prozent,
+        Mit_Schusswaffe_gedroht,
+        Mit_Schusswaffe_geschossen,
+        Aufklaerung_Faelle,
+        Aufklaerungsquote,
+        Tatverdaechtige_Insgesamt,
+        Tatverdaechtige_Maennlich,
+        Tatverdaechtige_Weiblich,
+        Nichtdeutsche_Tatverdaechtige_Anzahl,
+        Nichtdeutsche_Tatverdaechtige_Prozent
+      )
+
+    out_file <- file.path(output_dir, paste0(year, ".csv"))
+    readr::write_csv(df, out_file)
+    message(paste0("  ✓ Saved: ", out_file, " (", nrow(df), " rows)"))
+    return(df)
+  } else {
+    message(paste0("  x No data extracted for ", year))
+    return(NULL)
+  }
+}
+
+# -------------------------------------------------
+# MAIN EXECUTION
+# -------------------------------------------------
+
+excel_files <- list.files(
+  input_dir,
+  pattern = "\\.xlsx$|\\.xls$",
+  full.names = TRUE
+)
+excel_files <- excel_files[!stringr::str_detect(basename(excel_files), "^~")]
+excel_files <- excel_files[
+  !stringr::str_detect(basename(excel_files), "ref-kreise")
+]
+excel_files <- excel_files[stringr::str_detect(
+  basename(excel_files),
+  "^20[1-9][3-9]|^202[0-9]"
+)] # Only >= 2013
+
+print(paste(
+  "Found",
+  length(excel_files),
+  "Excel files for processing (>= 2013)"
+))
+
+message("Processing Excels...")
+if (length(excel_files) > 0) {
+  purrr::walk(excel_files, process_excel)
+}
+
+message("Done! Data written to ", output_dir)

@@ -1,0 +1,44 @@
+=========================================
+Regression Summary for: 899000 ( Street crime )
+=========================================
+Observations (N): 7600 
+Unique districts: 400 
+Year range: 2004 - 2022 
+
+                                      mod1              mod2              mod3
+Dependent Var.:             log_crime_rate    log_crime_rate    log_crime_rate
+                                                                              
+log(unemp_lag1)          -0.0486* (0.0269) -0.0481* (0.0269) -0.0496* (0.0283)
+gdp_per_capita                               0.0005 (0.0007)   0.0005 (0.0007)
+share_youth_18_29                                              0.0004 (0.0038)
+share_males                                                                   
+share_males_within_youth                                                      
+school_leavers_no_qual                                                        
+Fixed-Effects:           ----------------- ----------------- -----------------
+district_key                           Yes               Yes               Yes
+year                                   Yes               Yes               Yes
+________________________ _________________ _________________ _________________
+S.E.: Clustered           by: district_key  by: district_key  by: district_key
+Observations                         7,600             7,600             7,600
+R2                                 0.98579           0.98579           0.98579
+Within R2                          0.00129           0.00139           0.00139
+
+                                       mod4               mod5
+Dependent Var.:              log_crime_rate     log_crime_rate
+                                                              
+log(unemp_lag1)            -0.0343 (0.0275)   -0.0405 (0.0276)
+gdp_per_capita             -0.0004 (0.0007)   -0.0003 (0.0007)
+share_youth_18_29         -0.0069* (0.0040)  -0.0075* (0.0039)
+share_males              0.0906*** (0.0174) 0.0819*** (0.0193)
+share_males_within_youth                       0.0053 (0.0053)
+school_leavers_no_qual                       0.0037** (0.0018)
+Fixed-Effects:           ------------------ ------------------
+district_key                            Yes                Yes
+year                                    Yes                Yes
+________________________ __________________ __________________
+S.E.: Clustered            by: district_key   by: district_key
+Observations                          7,600              7,600
+R2                                  0.98598            0.98599
+Within R2                           0.01457            0.01575
+---
+Signif. codes: 0 '***' 0.01 '**' 0.05 '*' 0.1 ' ' 1

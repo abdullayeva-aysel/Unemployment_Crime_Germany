@@ -1,0 +1,170 @@
+library(tidyverse)
+library(readxl)
+
+# -------------------------------------------------
+# 1. SETUP PATHS
+# -------------------------------------------------
+
+cat("Current working directory:\n  ", getwd(), "\n\n")
+
+# Logic to find Data folder
+candidate_data_dirs <- c(
+  file.path("Data", "Processed"), # run from project root
+  file.path("..", "..", "Data", "Processed") # run from Code/Data_Processing
+)
+
+processed_dir <- NULL
+for (d in candidate_data_dirs) {
+  if (dir.exists(d)) {
+    processed_dir <- d
+    break
+  }
+}
+
+if (is.null(processed_dir)) {
+  stop("Could not find Processed Data directory.")
+}
+
+pks_file <- file.path(
+  processed_dir,
+  "PKS_Processed",
+  "extracted_pks_data_common_crime_types_harmonized.csv"
+)
+inkar_file <- file.path(processed_dir, "INKAR_Processed", "inkar_panel.csv")
+output_file <- file.path(processed_dir, "final_panel_dataset_common_crimes.csv")
+
+if (!file.exists(pks_file)) {
+  stop("PKS data not found:", pks_file)
+}
+if (!file.exists(inkar_file)) {
+  stop("INKAR data not found:", inkar_file)
+}
+
+cat("PKS File:   ", pks_file, "\n")
+cat("INKAR File: ", inkar_file, "\n")
+cat("Output File:", output_file, "\n\n")
+
+
+# -------------------------------------------------
+# 2. LOAD DATA
+# -------------------------------------------------
+
+cat("Loading data...\n")
+
+pks_data <- read_csv(
+  pks_file,
+  show_col_types = FALSE
+)
+
+pks_data <- pks_data |>
+  mutate(
+    Year = as.integer(Year),
+    Crime_Code = as.character(Crime_Code),
+    Crime_Type = as.character(Crime_Type),
+    Kreisschluessel = as.character(Kreisschluessel),
+    Kreis = as.character(Kreis),
+    Einwohner = as.numeric(Einwohner),
+    HZ = as.numeric(HZ)
+  )
+
+# Ensure Key is 5 digits
+pks_data <- pks_data |>
+  mutate(Kreisschluessel = str_pad(Kreisschluessel, 5, pad = "0"))
+
+inkar_data <- read_csv(inkar_file, show_col_types = FALSE)
+
+# Ensure identifiers are correct types
+inkar_data <- inkar_data |>
+  mutate(
+    Year = as.integer(Year),
+    Kreisschluessel = str_pad(as.character(Kreisschluessel), 5, pad = "0")
+  )
+
+# Ensure Key is 5 digits
+inkar_data <- inkar_data |>
+  mutate(Kreisschluessel = str_pad(Kreisschluessel, 5, pad = "0"))
+
+
+# -------------------------------------------------
+# 3. MERGE
+# -------------------------------------------------
+
+cat("Merging datasets...\n")
+
+# Left join to keep PKS structure (our dependent variable base)
+# We expect PKS to be the "master" list of districts/years we care about for crime analysis.
+final_data <- left_join(pks_data, inkar_data, by = c("Kreisschluessel", "Year"))
+
+# -------------------------------------------------
+# 4. VALIDATION
+# -------------------------------------------------
+
+cat("\n--- Validation ---\n")
+
+# Check NAs
+na_counts <- final_data |> summarize(across(everything(), ~ sum(is.na(.))))
+print(transpose(na_counts))
+
+# Check Coverage
+years_covered <- unique(final_data$Year)
+cat("Years covered:", min(years_covered), "-", max(years_covered), "\n")
+
+districts_count <- n_distinct(final_data$Kreisschluessel)
+cat("Number of unique districts:", districts_count, "\n")
+
+crime_codes_count <- n_distinct(final_data$Crime_Code)
+cat("Number of unique crime codes:", crime_codes_count, "\n")
+
+dup_count <- final_data |>
+  count(Year, Crime_Code, Kreisschluessel) |>
+  filter(n > 1) |>
+  nrow()
+cat("Duplicate rows by (Year, Crime_Code, Kreisschluessel):", dup_count, "\n")
+
+
+# -------------------------------------------------
+# 5. RENAME AND SAVE
+# -------------------------------------------------
+
+# We want to keep all joined columns but standardize the identifiers to lowercase English
+final_data_renamed <- final_data |>
+  rename(
+    year = Year,
+    crime_code = Crime_Code,
+    crime_type = Crime_Type,
+    district_key = Kreisschluessel,
+    district_name = Kreis,
+    population_pks = Einwohner,
+    crime_rate = HZ
+  )
+
+# If pop_total exists from INKAR, rename it to distinguish from PKS population
+if ("pop_total" %in% colnames(final_data_renamed)) {
+  final_data_renamed <- final_data_renamed |>
+    rename(pop_total_inkar = pop_total)
+}
+
+# Ensure all names are lowercase for consistency
+colnames(final_data_renamed) <- tolower(colnames(final_data_renamed))
+  # IMPUTATION: If crime_rate from PKS is missing but we have cases and INKAR population, compute it!
+  if ("erfasste_faelle" %in% colnames(final_data_renamed) && "pop_total_inkar" %in% colnames(final_data_renamed)) {
+    final_data_renamed <- final_data_renamed |>
+      mutate(
+        crime_rate = ifelse(
+          is.na(crime_rate) & !is.na(erfasste_faelle) & !is.na(pop_total_inkar) & pop_total_inkar > 0,
+          (erfasste_faelle / pop_total_inkar) * 100000,
+          crime_rate
+        )
+      )
+  }
+
+# Ensure output dir exists
+panel_dir <- file.path(processed_dir, "..", "Panel")
+if (!dir.exists(panel_dir)) {
+  dir.create(panel_dir, recursive = TRUE)
+}
+
+output_file_final <- file.path(panel_dir, "final_panel_dataset_common_crimes.csv")
+
+write_csv(final_data_renamed, output_file_final)
+cat("\nSaved Final Panel to:", output_file_final, "\n")

@@ -1,0 +1,44 @@
+=========================================
+Summary for Crime Code: 674000 ( Property damage )
+=========================================
+N in common sample: 7600 
+Number of districts: 400 
+Year range: 2004 - 2022 
+
+                                      mod1              mod2                mod3
+Dependent Var.:             log_crime_rate    log_crime_rate      log_crime_rate
+                                                                                
+log(unemp_lag1)          -0.0411* (0.0239) -0.0397* (0.0240) -0.0770*** (0.0252)
+gdp_per_capita                              0.0013* (0.0007)     0.0009 (0.0007)
+share_youth_18_29                                              0.0085** (0.0037)
+share_males                                                                     
+share_males_within_youth                                                        
+school_leavers_no_qual                                                          
+Fixed-Effects:           ----------------- ----------------- -------------------
+district_key                           Yes               Yes                 Yes
+year                                   Yes               Yes                 Yes
+________________________ _________________ _________________ ___________________
+S.E.: Clustered           by: district_key  by: district_key    by: district_key
+Observations                         7,600             7,600               7,600
+R2                                 0.98278           0.98279             0.98283
+Within R2                          0.00074           0.00128             0.00321
+
+                                        mod4                mod5
+Dependent Var.:               log_crime_rate      log_crime_rate
+                                                                
+log(unemp_lag1)          -0.0705*** (0.0251) -0.0691*** (0.0252)
+gdp_per_capita               0.0005 (0.0008)     0.0005 (0.0008)
+share_youth_18_29            0.0054 (0.0038)     0.0056 (0.0040)
+share_males                0.0383** (0.0149)   0.0402** (0.0166)
+share_males_within_youth                        -0.0012 (0.0049)
+school_leavers_no_qual                          -0.0008 (0.0017)
+Fixed-Effects:           ------------------- -------------------
+district_key                             Yes                 Yes
+year                                     Yes                 Yes
+________________________ ___________________ ___________________
+S.E.: Clustered             by: district_key    by: district_key
+Observations                           7,600               7,600
+R2                                   0.98286             0.98286
+Within R2                            0.00509             0.00514
+---
+Signif. codes: 0 '***' 0.01 '**' 0.05 '*' 0.1 ' ' 1

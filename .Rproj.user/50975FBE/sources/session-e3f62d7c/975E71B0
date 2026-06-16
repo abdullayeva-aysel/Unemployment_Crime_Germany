@@ -1,0 +1,26 @@
+{
+    "id": "975E71B0",
+    "path": "~/Applied_Economics/Code/Data_Processing/02_PKS_Old_Datasets_PDF2CSV.R",
+    "project_path": "Code/Data_Processing/02_PKS_Old_Datasets_PDF2CSV.R",
+    "type": "r_source",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1771936353050.0,
+    "source_on_save": false,
+    "relative_order": 2,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "11,2",
+        "scrollLine": "0"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1771933814,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1771933814,
+    "read_only": false,
+    "read_only_alternatives": []
+}

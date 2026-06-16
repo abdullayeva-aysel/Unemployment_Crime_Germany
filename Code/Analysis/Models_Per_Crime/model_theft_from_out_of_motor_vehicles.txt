@@ -1,0 +1,44 @@
+=========================================
+Summary for Crime Code: *50*00 ( Theft from/out of motor vehicles )
+=========================================
+N in common sample: 7600 
+Number of districts: 400 
+Year range: 2004 - 2022 
+
+                                        mod1                mod2                mod3
+Dependent Var.:               log_crime_rate      log_crime_rate      log_crime_rate
+                                                                                    
+log(unemp_lag1)          -0.3507*** (0.0437) -0.3524*** (0.0434) -0.2758*** (0.0482)
+gdp_per_capita                                  -0.0015 (0.0016)    -0.0007 (0.0018)
+share_youth_18_29                                                -0.0175*** (0.0065)
+share_males                                                                         
+share_males_within_youth                                                            
+school_leavers_no_qual                                                              
+Fixed-Effects:           ------------------- ------------------- -------------------
+district_key                             Yes                 Yes                 Yes
+year                                     Yes                 Yes                 Yes
+________________________ ___________________ ___________________ ___________________
+S.E.: Clustered             by: district_key    by: district_key    by: district_key
+Observations                           7,600               7,600               7,600
+R2                                   0.93016             0.93018             0.93043
+Within R2                            0.02307             0.02338             0.02688
+
+                                        mod4                mod5
+Dependent Var.:               log_crime_rate      log_crime_rate
+                                                                
+log(unemp_lag1)          -0.2498*** (0.0464) -0.2578*** (0.0468)
+gdp_per_capita              -0.0021 (0.0017)    -0.0020 (0.0017)
+share_youth_18_29        -0.0296*** (0.0064) -0.0300*** (0.0066)
+share_males               0.1527*** (0.0261)  0.1435*** (0.0296)
+share_males_within_youth                         0.0052 (0.0098)
+school_leavers_no_qual                           0.0048 (0.0032)
+Fixed-Effects:           ------------------- -------------------
+district_key                             Yes                 Yes
+year                                     Yes                 Yes
+________________________ ___________________ ___________________
+S.E.: Clustered             by: district_key    by: district_key
+Observations                           7,600               7,600
+R2                                   0.93135             0.93139
+Within R2                            0.03975             0.04037
+---
+Signif. codes: 0 '***' 0.01 '**' 0.05 '*' 0.1 ' ' 1

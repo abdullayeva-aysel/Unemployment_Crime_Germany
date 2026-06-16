@@ -1,0 +1,62 @@
+=========================================
+Regression Summary for: 730000 ( Drug offenses )
+=========================================
+Observations (N): 7600 
+Unique districts: 400 
+Year range: 2004 - 2022 
+
+                                        mod1                mod2
+Dependent Var.:               log_crime_rate      log_crime_rate
+                                                                
+log(unemp_lag1)          -0.3258*** (0.0583) -0.3273*** (0.0581)
+gdp_per_capita                                  -0.0013 (0.0016)
+share_youth_18_29                                               
+share_males                                                     
+share_males_within_youth                                        
+school_leavers_no_qual                                          
+Fixed-Effects:           ------------------- -------------------
+district_key                             Yes                 Yes
+year                                     Yes                 Yes
+________________________ ___________________ ___________________
+S.E.: Clustered             by: district_key    by: district_key
+Observations                           7,600               7,600
+R2                                   0.87044             0.87045
+Within R2                            0.00796             0.00806
+
+                                        mod3                mod4
+Dependent Var.:               log_crime_rate      log_crime_rate
+                                                                
+log(unemp_lag1)           -0.1621** (0.0672)  -0.1642** (0.0664)
+gdp_per_capita               0.0005 (0.0019)     0.0006 (0.0019)
+share_youth_18_29        -0.0377*** (0.0073) -0.0367*** (0.0076)
+share_males                                     -0.0125 (0.0342)
+share_males_within_youth                                        
+school_leavers_no_qual                                          
+Fixed-Effects:           ------------------- -------------------
+district_key                             Yes                 Yes
+year                                     Yes                 Yes
+________________________ ___________________ ___________________
+S.E.: Clustered             by: district_key    by: district_key
+Observations                           7,600               7,600
+R2                                   0.87130             0.87131
+Within R2                            0.01456             0.01460
+
+                                        mod5
+Dependent Var.:               log_crime_rate
+                                            
+log(unemp_lag1)          -0.1784*** (0.0661)
+gdp_per_capita               0.0007 (0.0019)
+share_youth_18_29        -0.0346*** (0.0077)
+share_males                 -0.0140 (0.0363)
+share_males_within_youth    -0.0018 (0.0109)
+school_leavers_no_qual     0.0097** (0.0043)
+Fixed-Effects:           -------------------
+district_key                             Yes
+year                                     Yes
+________________________ ___________________
+S.E.: Clustered             by: district_key
+Observations                           7,600
+R2                                   0.87142
+Within R2                            0.01547
+---
+Signif. codes: 0 '***' 0.01 '**' 0.05 '*' 0.1 ' ' 1
